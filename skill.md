@@ -1,6 +1,6 @@
 # Iris API
 
-KakaoTalk bot HTTP/WS bridge. Default `http://<device-ip>:3000` (configurable via `botHttpPort`). All JSON. No auth.
+KakaoTalk bot HTTP/WS bridge. Default `http://<device-ip>:3000` (configurable via `botHttpPort`). All JSON.
 
 ## Endpoints
 
