@@ -80,9 +80,9 @@ class ObserverHelper(
                         }
 
                         try {
-                            if ((message.contains("선물") && messageType == "71") or (attachment == null)) {
+                            if ((message.contains("선물") && messageType == "71") or attachment.isNullOrEmpty()) {
                                 attachment = "{}"
-                            } else if (attachment.isNotEmpty() && attachment != "{}") {
+                            } else if (attachment != "{}") {
                                 attachment =
                                     KakaoDecrypt.decrypt(enc, attachment, userId)
                             }
@@ -182,8 +182,13 @@ class ObserverHelper(
     }
 
     private fun getStringJsonToMap(data: String?): MutableMap<String, Any?> {
-        if(data == null) return HashMap()
-        val object_ = JSONObject(data)
+        if (data.isNullOrBlank()) return HashMap()
+        val object_ = try {
+            JSONObject(data)
+        } catch (e: Exception) {
+            println("getStringJsonToMap: failed to parse '$data': $e")
+            return HashMap()
+        }
         val map: MutableMap<String, Any?> = HashMap()
 
         val keys: MutableIterator<String> = object_.keys()

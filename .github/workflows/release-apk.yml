@@ -1,0 +1,90 @@
+name: Build & attach Iris APK to release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to upload to (workflow_dispatch only)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Build debug APK
+        # Iris runs via `app_process` from the APK, not a normal install, so any
+        # signing config works. Debug ships with the AGP debug keystore so we
+        # avoid having to manage signing secrets just to make CI work.
+        run: ./gradlew --no-daemon assembleDebug
+
+      - name: Stage release artifact
+        id: stage
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          src="output/Iris-debug.apk"
+          if [ ! -f "$src" ]; then
+            # Fallback: locate the assembled debug APK by glob.
+            src=$(find app/build/outputs/apk -type f -name '*.apk' | head -n1)
+          fi
+          test -f "$src" || { echo "no apk produced"; exit 1; }
+          cp "$src" dist/Iris.apk
+          ( cd dist && md5sum Iris.apk | awk '{print toupper($1)}' > Iris.apk.MD5 )
+          echo "apk_path=dist/Iris.apk" >> "$GITHUB_OUTPUT"
+          echo "md5_path=dist/Iris.apk.MD5" >> "$GITHUB_OUTPUT"
+          ls -la dist
+
+      - name: Upload artifacts (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Iris-apk
+          path: dist/
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Attach APK + MD5 to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tag.outputs.tag }}"
+          gh release upload "$tag" \
+            "${{ steps.stage.outputs.apk_path }}" \
+            "${{ steps.stage.outputs.md5_path }}" \
+            --clobber
