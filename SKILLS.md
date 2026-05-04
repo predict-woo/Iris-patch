@@ -82,3 +82,6 @@ Listen for new chats:
 ```bash
 websocat ws://device:3000/ws
 ```
+
+## For AI agents
+This file is a high-level overview. For specifics (exact field types, edge cases, serializer behavior, error paths), read the source — primarily [app/src/main/java/party/qwer/iris/IrisServer.kt](app/src/main/java/party/qwer/iris/IrisServer.kt) and the model classes under [app/src/main/java/party/qwer/iris/model/](app/src/main/java/party/qwer/iris/model/).
