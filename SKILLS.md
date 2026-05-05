@@ -24,11 +24,12 @@ Send message to a room.
 ```json
 {
   "type": "text" | "image" | "image_multiple",
-  "room": "<room_id>",
+  "room": "<chat_id>",
   "data": "hello" | "<base64-png>" | ["<b64>", "<b64>"],
   "threadId": "<optional>"
 }
 ```
+- `room` is the **numeric `chat_id`** (from `json.chat_id` in the WS payload, or the `chat_id` column in `chat_logs`). It is **not** the top-level `room` field of a WS event — that is the human-readable room name and will not work.
 - `text` → `data` is a string.
 - `image` → `data` is base64 PNG string.
 - `image_multiple` → `data` is JSON array of base64 strings.
@@ -58,6 +59,26 @@ JSON status: `{ "isObserving", "statusMessage", "lastLogs": [...] }`.
 
 ### `WS /ws`
 Streams new chat events as JSON strings. Subscribe and read each text frame.
+
+Example frame (shape, not contract — see `ObserverHelper.kt` for authoritative fields):
+```json
+{
+  "msg": "decrypted message text",
+  "room": "Room Display Name",
+  "sender": "Sender Display Name",
+  "json": {
+    "_id": "12345",
+    "chat_id": "987654321",
+    "user_id": "111222333",
+    "message": "decrypted message text",
+    "attachment": "{...}",
+    "type": "1",
+    "created_at": "1700000000",
+    "v": "{...}"
+  }
+}
+```
+To reply to the originating room, use `json.chat_id` as `room` in `POST /reply`.
 
 ## Errors
 Any exception → `500` with `{ "message": "<reason>" }`.
